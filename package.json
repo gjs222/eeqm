@@ -1,0 +1,29 @@
+{
+  "name": "equium-miner",
+  "version": "1.0.0",
+  "description": "Node.js CPU miner for Equium ($EQM) — Equihash(96,5) on Solana",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "mine": "node index.js",
+    "mine:gpu": "node index.js --gpu",
+    "build": "bash ./scripts/build.sh || powershell ./scripts/build.ps1"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.5.0",
+    "@solana/spl-token": "^0.4.8",
+    "@solana/web3.js": "^1.91.8",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "rpc-websockets": "7.11.0",
+    "uuid": "8.3.2",
+    "bs58": "^5.0.0"
+  },
+  "overrides": {
+    "rpc-websockets": "7.11.0",
+    "uuid": "8.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
