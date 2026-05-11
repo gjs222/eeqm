@@ -267,31 +267,30 @@ async function startMiner(opts) {
     // Check round didn't advance while we were solving
     try {
       const fresh = await fetchConfig(connection);
-      if (fresh.blockHeight !== blockHeight) {
-        log('warn', 'Round changed before submission — starting next round');
-        continue;
-      }
+      if (fresh.blockHeight !== blockHeight) continue;
     } catch {}
 
-    log('info', 'Submitting mine transaction...');
-    try {
-      const sig = await submitMine(connection, wallet, result.nonceHex, result.solnIndicesHex);
-      blocksMined++;
-      console.log('');
-      log('mine', f(C.green + C.bold, `⛏  MINED! Block #${blockHeight} → +${formatEqm(config.currentEpochReward)} EQM`));
-      log('mine', `  sig: ${f(C.cyan, sig)}`);
-      log('mine', `  Session total: ${blocksMined} block(s)`);
-      console.log('');
-    } catch (e) {
-      log('err', `Transaction failed: ${e.message}`);
-    }
+    // Silent background submission
+    submitMine(connection, wallet, result.nonceHex, result.solnIndicesHex)
+      .then((sig) => {
+        blocksMined++;
+        console.log('');
+        log('mine', f(C.green + C.bold, `⛏  MINED! Block #${blockHeight} → +${formatEqm(config.currentEpochReward)} EQM`));
+        log('mine', `  sig: ${f(C.cyan, sig)}`);
+        console.log('');
+      })
+      .catch((e) => {
+        // Only log errors that aren't "Invalid Solution" spam
+        if (!e.message.includes('102')) {
+          log('err', `Submission: ${e.message}`);
+        }
+      });
 
     if (maxBlocks > 0 && blocksMined >= maxBlocks) {
       log('ok', `Reached --max-blocks ${maxBlocks}. Exiting.`);
       process.exit(0);
     }
-
-    await sleep(2000);
+    await sleep(500); // Faster turnaround for next nonce
   }
 }
 
