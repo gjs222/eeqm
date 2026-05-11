@@ -166,8 +166,15 @@ function mineRound(connection, config, wallet, numThreads, useGpu, onHashrate) {
           killAll(workers);
           resolve({ solved: true, ...msg });
         } else if (msg.type === 'progress') {
+          const now = Date.now();
           hpsPerWorker[msg.workerId] = msg.hps;
-          if (onHashrate) onHashrate(totalHps());
+          
+          // Only update UI every 500ms to prevent terminal scrambling
+          if (!this._lastUiUpdate || now - this._lastUiUpdate > 500) {
+            this._lastUiUpdate = now;
+            const total = totalHps();
+            process.stdout.write(`\r  ${f(C.yellow, '⚙')} HPS: ${f(C.green, total.toFixed(2).padStart(10))} | Round: ${f(C.cyan, String(currentHeight))}          `);
+          }
         }
       });
       w.on('error', (err) => {
@@ -199,7 +206,6 @@ async function startMiner(opts) {
 
   let blocksMined = 0;
   let lastBlockHeight = -1n;
-  let tryNum = 0;
 
   while (true) {
     // ── Fetch round ──────────────────────────────────────────────────────────
