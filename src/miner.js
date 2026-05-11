@@ -181,12 +181,17 @@ function mineRound(connection, config, wallet, numThreads, useGpu, onHashrate) {
 
 async function startMiner(opts) {
   const { rpcUrl, wallet, threads, maxBlocks, useGpu } = opts;
-  const numThreads = threads > 0 ? threads : os.cpus().length;
+  
+  // If GPU is enabled and threads not specified, default to 0 CPU threads
+  let numThreads = threads;
+  if (numThreads === undefined) {
+    numThreads = useGpu ? 0 : os.cpus().length;
+  }
 
   banner();
   log('info', `RPC:     ${f(C.cyan, rpcUrl)}`);
   log('info', `Wallet:  ${f(C.cyan, wallet.publicKey.toBase58())}`);
-  log('info', `Threads: ${f(C.cyan, String(numThreads))}`);
+  log('info', `CPU:     ${numThreads > 0 ? f(C.cyan, String(numThreads)) : f(C.red, 'DISABLED')}`);
   if (useGpu) log('info', `GPU:     ${f(C.green, 'ENABLED')}`);
   console.log('');
 
