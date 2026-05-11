@@ -254,9 +254,15 @@ async function startMiner(opts) {
     }
 
     log('ok', `✓ SOLUTION FOUND (worker ${result.workerId})`);
-    log('ok', `  nonce: ${result.nonceHex.slice(0, 16)}…`);
-    log('ok', `  soln:  ${result.solnIndicesHex.slice(0, 16)}…`);
-    log('ok', `  hash:  ${result.hashHex}`);
+    if (result.nonceHex) {
+      log('ok', `  nonce: ${String(result.nonceHex).slice(0, 16)}…`);
+    }
+    if (result.solnIndicesHex) {
+      log('ok', `  soln:  ${String(result.solnIndicesHex).slice(0, 16)}…`);
+    }
+    if (result.hashHex) {
+      log('ok', `  hash:  ${result.hashHex}`);
+    }
 
     // Check round didn't advance while we were solving
     try {
