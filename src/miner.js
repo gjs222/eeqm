@@ -206,6 +206,7 @@ async function startMiner(opts) {
 
   let blocksMined = 0;
   let lastBlockHeight = -1n;
+  let tryNum = 0;
 
   while (true) {
     // ── Fetch round ──────────────────────────────────────────────────────────
