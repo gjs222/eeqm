@@ -63,7 +63,6 @@ __global__ void generate_leaves_turbo(uint8_t* target, uint32_t nonce_base, Row*
     uint64_t hash0 = v[0] ^ v[8];
     uint64_t* target64 = (uint64_t*)target;
 
-    // GPU-Side Target Comparison
     if (hash0 <= target64[0]) {
         uint32_t idx = atomicAdd(success_count, 1);
         if (idx == 0) *found_nonce = nonce_base;
@@ -79,6 +78,55 @@ __global__ void generate_leaves_turbo(uint8_t* target, uint32_t nonce_base, Row*
 }
 
 int main() {
-    // Boilerplate for streams...
+    std::string line;
+    uint8_t *d_target;
+    uint32_t *d_success_count, *d_found_nonce;
+    Row *d_rows[STREAMS];
+    cudaStream_t streams[STREAMS];
+
+    cudaMalloc(&d_target, 32);
+    cudaMalloc(&d_success_count, sizeof(uint32_t));
+    cudaMalloc(&d_found_nonce, sizeof(uint32_t));
+
+    for (int i = 0; i < STREAMS; i++) {
+        cudaMalloc(&d_rows[i], NUM_LEAVES * sizeof(Row));
+        cudaStreamCreate(&streams[i]);
+    }
+
+    while (std::getline(std::cin, line)) {
+        if (line.empty()) continue;
+        // Simple manual parsing of target for speed
+        uint8_t h_target[32] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // Default loose target
+        cudaMemcpy(d_target, h_target, 32, cudaMemcpyHostToDevice);
+
+        auto start = std::chrono::high_resolution_clock::now();
+        uint32_t nonce = 0;
+        uint32_t h_success = 0;
+
+        while (true) {
+            cudaMemset(d_success_count, 0, sizeof(uint32_t));
+            
+            for (int i = 0; i < STREAMS; i++) {
+                generate_leaves_turbo<<<NUM_LEAVES / THREADS_PER_BLOCK, THREADS_PER_BLOCK, 0, streams[i]>>>(
+                    d_target, nonce++, d_rows[i], d_success_count, d_found_nonce
+                );
+            }
+            cudaDeviceSynchronize();
+
+            cudaMemcpy(&h_success, d_success_count, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+            if (h_success > 0) {
+                uint32_t win_nonce;
+                cudaMemcpy(&win_nonce, d_found_nonce, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+                std::cout << "{\"nonce\":\"" << win_nonce << "\",\"hash\":\"winner\"}" << std::endl;
+                break; 
+            }
+
+            if (nonce % 200 == 0) {
+                auto now = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> elapsed = now - start;
+                std::cout << "{\"type\":\"progress\",\"hps\":" << (double)nonce / elapsed.count() << "}" << std::endl;
+            }
+        }
+    }
     return 0;
 }
