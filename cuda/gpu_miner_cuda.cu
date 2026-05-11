@@ -69,10 +69,14 @@ __global__ void generate_leaves_turbo(uint8_t* challenge, uint32_t nonce_base, R
         G(v[3], v[4], v[9],  v[14], 0, 0);
     }
 
-    // Coalesced Write to VRAM
-    rows[tid].hash[0] = (uint32_t)(v[0] ^ v[8]);
-    rows[tid].hash[1] = (uint32_t)(v[1] ^ v[9]);
-    rows[tid].hash[2] = (uint32_t)(v[2] ^ v[10]);
+    // Coalesced Vectorized Write (Fastest possible VRAM write)
+    uint4* out = (uint4*)rows;
+    uint4 result;
+    result.x = (uint32_t)(v[0] ^ v[8]);
+    result.y = (uint32_t)(v[1] ^ v[9]);
+    result.z = (uint32_t)(v[2] ^ v[10]);
+    result.w = tid; // Store the index as well
+    out[tid] = result;
 }
 
 void solve_async(uint32_t nonce, Row* d_rows, cudaStream_t stream) {
