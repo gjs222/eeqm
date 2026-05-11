@@ -117,7 +117,7 @@ function mineRound(connection, config, wallet, numThreads, useGpu, onHashrate) {
       const work = {
         challenge: config.currentChallenge.toString('hex'),
         target:    config.currentTarget.toString('hex'),
-        height:    currentHeight
+        height:    currentHeight.toString() // Convert BigInt to string
       };
       gpuProcess.stdin.write(JSON.stringify(work) + '\n');
 
