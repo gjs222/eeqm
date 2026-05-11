@@ -114,6 +114,34 @@ async function submitMine(connection, wallet, nonceHex, solnIndicesHex) {
   const vaultPda  = deriveVaultPda();
   const minerAta  = getAssociatedTokenAddressSync(MINT_PK, wallet.publicKey, false, TOKEN_PROGRAM_ID);
 
+  const transaction = new Transaction();
+
+  // 1. Check if miner needs a token account
+  const ataInfo = await connection.getAccountInfo(minerAta);
+  if (!ataInfo) {
+    console.log('  Creating EQM token account...');
+    const { createAssociatedTokenAccountInstruction } = require('@solana/spl-token');
+    transaction.add(
+      createAssociatedTokenAccountInstruction(
+        wallet.publicKey,
+        minerAta,
+        wallet.publicKey,
+        MINT_PK,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+    );
+  }
+
+  // 2. Add Priority Fees (from .env)
+  const { ComputeBudgetProgram } = require('@solana/web3.js');
+  const cuLimit = parseInt(process.env.CU_LIMIT || '1400000');
+  const microLamports = parseInt(process.env.PRIORITY_FEE || '1000');
+  
+  transaction.add(ComputeBudgetProgram.setComputeUnitLimit({ units: cuLimit }));
+  transaction.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports }));
+
+  // 3. Build Mine Instruction
   const ix = buildMineInstruction(
     wallet.publicKey,
     configPda,
@@ -122,11 +150,11 @@ async function submitMine(connection, wallet, nonceHex, solnIndicesHex) {
     Buffer.from(nonceHex, 'hex'),
     Buffer.from(solnIndicesHex, 'hex'),
   );
+  transaction.add(ix);
 
-  const tx = new Transaction().add(ix);
-  return sendAndConfirmTransaction(connection, tx, [wallet], {
+  return sendAndConfirmTransaction(connection, transaction, [wallet], {
     commitment: 'confirmed',
-    preflightCommitment: 'confirmed',
+    skipPreflight: true, // Speed up submission
   });
 }
 
